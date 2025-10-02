@@ -1,0 +1,200 @@
+#!/usr/bin/env python3
+"""
+manual_github_setup.py
+
+Alternative GitHub setup script that provides manual instructions 
+when GitHub CLI is not available.
+
+Author: Stewart Geisz
+"""
+
+import os
+import sys
+import subprocess
+import webbrowser
+from typing import List, Dict
+
+
+class ManualGitHubSetup:
+    def __init__(self, github_username: str = "StewartGeisz"):
+        self.github_username = github_username
+        
+    def check_git_available(self) -> bool:
+        """Check if Git is available"""
+        try:
+            subprocess.run(['git', '--version'], capture_output=True, check=True)
+            return True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return False
+    
+    def generate_github_instructions(self, projects_dir: str) -> None:
+        """Generate step-by-step GitHub setup instructions"""
+        
+        if not os.path.exists(projects_dir):
+            print(f"❌ Directory not found: {projects_dir}")
+            return
+            
+        if not self.check_git_available():
+            print("❌ Git is not installed or not in PATH")
+            print("   Download from: https://git-scm.com/downloads")
+            return
+        
+        projects = []
+        for item in os.listdir(projects_dir):
+            project_path = os.path.join(projects_dir, item)
+            if os.path.isdir(project_path) and os.path.exists(os.path.join(project_path, '.git')):
+                projects.append(item)
+        
+        if not projects:
+            print("❌ No Git repositories found in the directory")
+            return
+            
+        print("🚀 Manual GitHub Repository Setup Instructions")
+        print("=" * 50)
+        print(f"📂 Projects found: {len(projects)}")
+        print(f"👤 GitHub Username: {self.github_username}")
+        print()
+        
+        for i, project_name in enumerate(projects, 1):
+            print(f"### {i}. Setting up: {project_name}")
+            print("-" * 30)
+            
+            # Read project description from README
+            project_path = os.path.join(projects_dir, project_name)
+            description = self.get_project_description(project_path)
+            
+            print("📝 **Step 1:** Create GitHub Repository")
+            print(f"   1. Go to: https://github.com/new")
+            print(f"   2. Repository name: {project_name}")
+            print(f"   3. Description: {description}")
+            print(f"   4. Set to Public (for profile visibility)")
+            print(f"   5. Don't initialize with README (already exists)")
+            print()
+            
+            print("🔗 **Step 2:** Connect Local Repository")
+            print("   Run these commands in your terminal:")
+            print(f"   ```")
+            print(f"   cd \"{project_path}\"")
+            print(f"   git remote add origin https://github.com/{self.github_username}/{project_name}.git")
+            print(f"   git branch -M main")
+            print(f"   git push -u origin main")
+            print(f"   ```")
+            print()
+            
+            print("✅ **Step 3:** Verify Upload")
+            print(f"   Visit: https://github.com/{self.github_username}/{project_name}")
+            print()
+            print("=" * 50)
+            print()
+        
+        # Summary
+        print("🎯 **SUMMARY**")
+        print(f"Complete these steps for all {len(projects)} projects to:")
+        print("✅ Create organized GitHub repositories")
+        print("✅ Showcase your coding skills") 
+        print("✅ Boost your GitHub profile activity")
+        print("✅ Demonstrate project organization abilities")
+        print()
+        
+        # Batch script generation
+        self.generate_batch_script(projects_dir, projects)
+    
+    def get_project_description(self, project_path: str) -> str:
+        """Extract description from README.md"""
+        readme_path = os.path.join(project_path, "README.md")
+        if not os.path.exists(readme_path):
+            return f"Organized project: {os.path.basename(project_path)}"
+            
+        try:
+            with open(readme_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+                for i, line in enumerate(lines):
+                    if line.strip().startswith('## Description'):
+                        # Get the next non-empty line
+                        for j in range(i + 1, len(lines)):
+                            desc = lines[j].strip()
+                            if desc and not desc.startswith('#'):
+                                return desc[:100] + "..." if len(desc) > 100 else desc
+        except Exception:
+            pass
+            
+        return f"Organized project: {os.path.basename(project_path)}"
+    
+    def generate_batch_script(self, projects_dir: str, projects: List[str]) -> None:
+        """Generate a batch script for easier setup"""
+        
+        script_content = f"""@echo off
+REM GitHub Repository Setup Script
+REM Generated by Project Organizer
+REM 
+REM Instructions:
+REM 1. First create GitHub repositories manually at https://github.com/new
+REM 2. Then run this script to connect and push all projects
+REM
+
+echo Starting GitHub repository setup for {len(projects)} projects...
+echo.
+
+"""
+        
+        for project_name in projects:
+            project_path = os.path.join(projects_dir, project_name).replace('/', '\\')
+            script_content += f"""
+echo Setting up: {project_name}
+cd /d "{project_path}"
+git remote add origin https://github.com/{self.github_username}/{project_name}.git
+git branch -M main
+git push -u origin main
+echo ✅ {project_name} pushed to GitHub
+echo.
+
+"""
+        
+        script_content += f"""
+echo.
+echo 🎉 All projects have been pushed to GitHub!
+echo Visit your profile: https://github.com/{self.github_username}
+pause
+"""
+        
+        script_path = os.path.join(projects_dir, "setup_github_repos.bat")
+        
+        try:
+            with open(script_path, 'w') as f:
+                f.write(script_content)
+            print(f"📜 **Batch Script Created:** {script_path}")
+            print("   After creating GitHub repositories, run this script to push all projects!")
+            print()
+        except Exception as e:
+            print(f"⚠️ Could not create batch script: {e}")
+    
+    def open_github_new_repo(self) -> None:
+        """Open GitHub new repository page"""
+        try:
+            webbrowser.open("https://github.com/new")
+            print("🌐 Opened GitHub new repository page in your browser")
+        except Exception as e:
+            print(f"⚠️ Could not open browser: {e}")
+            print("   Manually visit: https://github.com/new")
+
+
+def main():
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Manual GitHub setup instructions")
+    parser.add_argument("projects_dir", type=str, help="Directory containing organized projects")
+    parser.add_argument("--github-user", type=str, default="StewartGeisz", help="GitHub username")
+    parser.add_argument("--open-github", action="store_true", help="Open GitHub new repo page")
+    
+    args = parser.parse_args()
+    
+    setup = ManualGitHubSetup(github_username=args.github_user)
+    
+    if args.open_github:
+        setup.open_github_new_repo()
+    
+    setup.generate_github_instructions(args.projects_dir)
+
+
+if __name__ == "__main__":
+    main()
